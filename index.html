@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<!-- ====== FB 分享預覽卡（貼到粉專會顯示的標題/說明/縮圖）====== -->
+<!-- 上線後把 og:url 換成你的實際網址，og:image 換成一張 1200x630 的縮圖網址 -->
+<title>世壯運模擬器</title>
+<meta name="description" content="輸入姓名，領取你的世壯運翻譯選手證，抽選你的參賽項目，體驗一場「靠北世壯運」。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="世壯運模擬器｜你的選手證翻譯是？">
+<meta property="og:description" content="輸入姓名 → 領取世壯運翻譯選手證 → 抽選參賽項目 → 收集各種荒唐結局。">
+<meta property="og:url" content="https://你的化名.github.io/">
+<meta property="og:image" content="">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   世壯運模擬器 —— 樣式與程式（下方不需要動）
+   要新增/修改「事件內容、角色、翻譯表」，請往下捲到
+   <script id="game-data"> 那一區編輯即可。
+   ============================================================ */
+
+:root{
+  --track:#E8452B;        /* 跑道紅（主色）*/
+  --track-deep:#C2371F;
+  --gold:#DFA328;         /* 獎牌金 */
+  --ink:#18233C;          /* 深海軍藍墨 */
+  --ground:#EFF0EC;       /* 冷調米白（跑道白線感）*/
+  --surface:#FBFBF9;
+  --surface-2:#F3F4F0;
+  --line:#D5D8D2;         /* 分隔線 */
+  --muted:#5C6472;
+  --text:#18233C;
+  --on-track:#FFF7F2;
+  --shadow:0 10px 30px -12px rgba(24,35,60,.28);
+  --radius:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --track:#FF5A3C;
+    --track-deep:#E8452B;
+    --gold:#EAB43C;
+    --ink:#0C111D;
+    --ground:#0C111D;
+    --surface:#161F33;
+    --surface-2:#1D2740;
+    --line:#2A3652;
+    --muted:#95A0B5;
+    --text:#EAEDF4;
+    --on-track:#FFF7F2;
+    --shadow:0 14px 34px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --track:#FF5A3C; --track-deep:#E8452B; --gold:#EAB43C; --ink:#0C111D;
+  --ground:#0C111D; --surface:#161F33; --surface-2:#1D2740; --line:#2A3652;
+  --muted:#95A0B5; --text:#EAEDF4; --on-track:#FFF7F2;
+  --shadow:0 14px 34px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--ground);
+  color:var(--text);
+  font-family:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100dvh;
+}
+img{max-width:100%}
+button{font-family:inherit}
+
+/* 賽道背景線條 */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 46px, color-mix(in srgb, var(--line) 55%, transparent) 46px 47px);
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 40%, #000 88%, transparent);
+          mask-image:linear-gradient(180deg, transparent, #000 40%, #000 88%, transparent);
+}
+
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:20px 18px 48px;min-height:100dvh;display:flex;flex-direction:column}
+
+/* 頂列 */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.02em}
+.brand .dot{width:14px;height:14px;border-radius:50%;background:var(--track);box-shadow:0 0 0 4px color-mix(in srgb,var(--track) 22%,transparent)}
+.iconbtn{border:1px solid var(--line);background:var(--surface);color:var(--text);width:40px;height:40px;border-radius:12px;font-size:18px;cursor:pointer;display:grid;place-items:center;transition:.15s}
+.iconbtn:hover{border-color:var(--track)}
+.iconbtn:focus-visible{outline:3px solid color-mix(in srgb,var(--track) 55%,transparent);outline-offset:2px}
+
+/* 進度 */
+.progress{font-family:"Oswald",sans-serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.progress b{color:var(--track)}
+
+/* 畫面切換 */
+.screen{display:none;flex:1;flex-direction:column;justify-content:center;gap:22px;padding:14px 0}
+.screen.active{display:flex;animation:rise .4s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.eyebrow{font-family:"Oswald",sans-serif;text-transform:uppercase;letter-spacing:.22em;font-size:13px;color:var(--track);font-weight:600;margin:0}
+h1.title{font-family:"Oswald","Noto Sans TC",sans-serif;font-weight:700;font-size:clamp(38px,12vw,64px);line-height:.98;margin:6px 0 0;text-wrap:balance;letter-spacing:.01em}
+h1.title .zh{font-family:"Noto Sans TC";display:block;font-weight:900;font-size:clamp(30px,10vw,52px)}
+.lede{color:var(--muted);font-size:16px;margin:2px 0 0;max-width:34ch}
+
+/* 輸入 */
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-weight:700;font-size:14px}
+.field input{
+  font-size:20px;padding:16px 16px;border-radius:14px;border:1.5px solid var(--line);
+  background:var(--surface);color:var(--text);width:100%;transition:.15s
+}
+.field input:focus{outline:none;border-color:var(--track);box-shadow:0 0 0 4px color-mix(in srgb,var(--track) 18%,transparent)}
+.hint{font-size:13px;color:var(--muted)}
+
+/* 按鈕 */
+.btn{
+  appearance:none;border:none;cursor:pointer;font-weight:900;font-size:17px;
+  padding:16px 20px;border-radius:14px;background:var(--track);color:var(--on-track);
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  box-shadow:var(--shadow);transition:transform .1s, filter .15s
+}
+.btn:hover{filter:brightness(1.05)}
+.btn:active{transform:translateY(2px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.ghost{background:var(--surface);color:var(--text);border:1.5px solid var(--line);box-shadow:none}
+.btn.gold{background:var(--gold);color:#1c1400}
+.btn:focus-visible{outline:3px solid color-mix(in srgb,var(--track) 55%,transparent);outline-offset:3px}
+.btn-row{display:flex;flex-direction:column;gap:10px}
+
+/* ===== 選手證 ===== */
+.card-stage{perspective:1400px;display:flex;justify-content:center}
+.credential{
+  width:100%;max-width:400px;background:var(--surface);border-radius:20px;overflow:hidden;
+  box-shadow:var(--shadow);border:1px solid var(--line);position:relative;
+  animation:flip .7s cubic-bezier(.2,.7,.2,1) both
+}
+@keyframes flip{from{opacity:0;transform:rotateY(-28deg) translateY(10px)}to{opacity:1;transform:none}}
+.cred-top{background:var(--ink);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.cred-top .lanyard{width:60px;height:8px;border-radius:20px;background:color-mix(in srgb,#fff 22%,transparent)}
+.cred-top .tag{font-family:"Oswald";letter-spacing:.18em;font-size:12px;text-transform:uppercase;color:#fff;opacity:.85}
+.cred-body{padding:22px 22px 8px;position:relative}
+.cred-body::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--track) 22%,transparent),transparent 68%)}
+.cred-label{font-family:"Oswald";text-transform:uppercase;letter-spacing:.2em;font-size:11px;color:var(--muted)}
+.cred-en{font-family:"Oswald","Noto Sans TC",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(30px,9vw,44px);line-height:1;margin:4px 0 2px;color:var(--track);word-break:break-word}
+.cred-zh{font-size:18px;font-weight:700;letter-spacing:.35em}
+.cred-meta{display:flex;gap:0;margin-top:18px;border-top:1px dashed var(--line);padding-top:14px}
+.cred-meta .m{flex:1;border-right:1px solid var(--line)}
+.cred-meta .m:last-child{border-right:none}
+.cred-meta .k{font-family:"Oswald";font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.cred-meta .v{font-family:"Oswald";font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.cred-strip{height:10px;background:repeating-linear-gradient(90deg,var(--track) 0 26px,var(--gold) 26px 52px)}
+
+/* ===== 角色三選一 ===== */
+.pick-grid{display:flex;flex-direction:column;gap:12px}
+.pick{
+  text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;
+  padding:16px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:.15s;width:100%;color:var(--text)
+}
+.pick:hover{border-color:var(--track);transform:translateX(4px)}
+.pick:focus-visible{outline:3px solid color-mix(in srgb,var(--track) 55%,transparent);outline-offset:2px}
+.pick .ic{font-size:34px;width:56px;height:56px;flex:none;display:grid;place-items:center;background:var(--surface-2);border-radius:14px}
+.pick .nm{font-weight:900;font-size:19px}
+.pick .ds{color:var(--muted);font-size:13px}
+.pick .go{margin-left:auto;color:var(--track);font-weight:900;font-size:22px}
+
+/* ===== 事件結局 ===== */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.result-head{background:var(--surface-2);padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.result-head .ic{font-size:22px}
+.result-head .role{font-family:"Oswald";text-transform:uppercase;letter-spacing:.14em;font-size:12px;color:var(--muted)}
+.result-body{padding:20px 18px}
+.result-body h2{margin:0 0 12px;font-size:22px;font-weight:900;line-height:1.25;text-wrap:balance}
+.result-body p{margin:0 0 14px;font-size:16px}
+.ending{display:inline-flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--track) 12%,transparent);color:var(--track);border:1px solid color-mix(in srgb,var(--track) 35%,transparent);padding:8px 14px;border-radius:999px;font-weight:900;font-size:14px}
+.fb-btn{background:#1877F2;color:#fff}
+.fb-note{font-size:12px;color:var(--muted);margin-top:4px;text-align:center}
+
+/* 解鎖提示 */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(140%);z-index:20;
+  background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:700;font-size:14px;
+  box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast .medal{color:var(--gold)}
+
+/* ===== 圖鑑 ===== */
+.dex-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.dex-count{font-family:"Oswald";font-weight:700;line-height:1}
+.dex-count b{font-size:52px;color:var(--track)}
+.dex-count span{font-size:24px;color:var(--muted)}
+.meter{height:10px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--line);margin:14px 0 8px}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--track),var(--gold));border-radius:999px;transition:width .5s}
+.dex-group{margin-top:18px}
+.dex-group h3{font-size:14px;font-family:"Oswald";letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.dex-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--surface)}
+.dex-item.locked{opacity:.6;background:var(--surface-2)}
+.dex-item .st{font-size:20px}
+.dex-item .tx{font-weight:700;font-size:15px}
+.dex-item.locked .tx{color:var(--muted);font-weight:500;letter-spacing:.2em}
+.dex-item a{margin-left:auto;color:#1877F2;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
+
+.footer{margin-top:auto;padding-top:26px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
+.footer a{color:var(--muted)}
+.linklike{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:12px;padding:0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>世壯運模擬器</div>
+    <button class="iconbtn" id="themeBtn" title="切換深/淺色" aria-label="切換深淺色主題">🌗</button>
+  </div>
+  <div class="progress" id="progress" hidden><span id="roundWrap" hidden>第 <b id="roundNum">1</b> 輪 · </span><span id="dexMini">已收集 0 種結局</span></div>
+
+  <!-- 1) 輸入姓名 -->
+  <section class="screen active" id="s-start">
+    <div>
+      <p class="eyebrow">World Masters Games · Simulator</p>
+      <h1 class="title">歡迎來到<span class="zh">世壯運模擬器</span></h1>
+      <p class="lede">輸入你的姓名，來一場世壯運冒險吧！</p>
+    </div>
+    <div class="field">
+      <label for="nameInput">選手姓名</label>
+      <input id="nameInput" type="text" inputmode="text" autocomplete="off" placeholder="例如：王得權" maxlength="12">
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="genBtn">產生我的選手證 →</button>
+      <button class="btn ghost" id="dexBtn0">看我的結局圖鑑</button>
+    </div>
+  </section>
+
+  <!-- 2) 選手證 -->
+  <section class="screen" id="s-card">
+    <div>
+      <p class="eyebrow">Accreditation Card · 參賽選手證</p>
+    </div>
+    <div class="card-stage">
+      <div class="credential" id="credential">
+        <div class="cred-top"><span class="tag">Athlete Pass</span><span class="lanyard"></span></div>
+        <div class="cred-body">
+          <div class="cred-label">Registered Name</div>
+          <div class="cred-en" id="credEn">KING GET POWER</div>
+          <div class="cred-zh" id="credZh">王得權</div>
+          <div class="cred-meta">
+            <div class="m"><div class="k">Bib No.</div><div class="v" id="credBib">0000</div></div>
+            <div class="m"><div class="k">Age Group</div><div class="v" id="credAge">M45</div></div>
+            <div class="m"><div class="k">Status</div><div class="v" style="color:var(--gold)">READY</div></div>
+          </div>
+        </div>
+        <div class="cred-strip"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="toPickBtn">進入賽場，抽選項目 →</button>
+      <button class="btn ghost" id="renameBtn">重新輸入姓名</button>
+    </div>
+  </section>
+
+  <!-- 3) 角色三選一 -->
+  <section class="screen" id="s-pick">
+    <div>
+      <p class="eyebrow">Choose Your Event · 三選一</p>
+      <h1 class="title" style="font-size:clamp(28px,9vw,42px)">你想參加<br>哪個項目？</h1>
+      <p class="lede">命運從報名池抽出了三個項目，選一個，看看你會遇到什麼。</p>
+    </div>
+    <div class="pick-grid" id="pickGrid"></div>
+  </section>
+
+  <!-- 4) 事件結局 -->
+  <section class="screen" id="s-result">
+    <div class="result">
+      <div class="result-head"><span class="ic" id="resIc">🏃</span><span class="role" id="resRole">TRACK &amp; FIELD</span></div>
+      <div class="result-body">
+        <h2 id="resTitle"></h2>
+        <p id="resText"></p>
+        <span class="ending">🏁 結局 · <span id="resEnding"></span></span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <div id="fbLinks" style="display:flex;flex-direction:column;gap:10px"></div>
+      <p class="fb-note" id="fbNote" hidden>（此結局尚未連結原文貼文）</p>
+      <button class="btn gold" id="againBtn">🎲 再玩一輪</button>
+      <button class="btn ghost" id="dexBtn">看我的結局圖鑑</button>
+    </div>
+  </section>
+
+  <!-- 5) 圖鑑 -->
+  <section class="screen" id="s-dex">
+    <div class="dex-head">
+      <div>
+        <p class="eyebrow">Collection · 結局圖鑑</p>
+        <div class="dex-count"><b id="dexHave">0</b><span id="dexTotal">/0</span></div>
+      </div>
+      <button class="btn ghost" id="backBtn" style="width:auto;padding:12px 18px">← 回遊戲</button>
+    </div>
+    <div class="meter"><i id="dexBar" style="width:0%"></i></div>
+    <div id="dexList"></div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="linklike" id="resetBtn">清除我的收集紀錄</button>
+    </div>
+  </section>
+
+  <div class="footer">
+    <p>本作品為粉絲惡搞模擬器，內容為虛構改寫；點擊按鈕可前往原始貼文。<br>
+    素材靈感來自「靠北世壯運」網友投稿。與主辦單位無關。</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="medal">🏅</span><span>新結局解鎖！</span></div>
+
+<!-- ============================================================
+     ★★★ 遊戲資料區：日後維護只要改這一段 ★★★
+     ============================================================ -->
+<script id="game-data">
+/* 【Google Sheet 設定】
+   SHEET_ID = 你的試算表網址中間那一長串。
+   SHEET_TABS = 兩個分頁的名稱（要跟 Sheet 上的分頁名一字不差）。
+   分享設定維持「知道連結的任何人 = 檢視者」即可，網站會自動讀取；
+   讀不到時會自動改用下方「內建備援內容」，遊戲永遠不會白畫面。 */
+const SHEET_ID = "1SSFr6tWlImG0gMTVOVAu9zlYl0DqMuPrleoCjEN42Uk";
+const SHEET_TABS = { characters:"characters", events:"events", settings:"settings" };
+
+/* 【大會通病出現機率】0 ~ 1（例如 0.33 ≈ 每 3 次約有 1 次抽到「大會通病」）。
+   ★ 最好改的方式：在 Google Sheet 開一個叫「settings」的分頁，
+     第一列打表頭 key、value，第二列打 common_chance、你要的數字（例如 0.4），
+     存檔後網頁幾分鐘內自動生效——不用改這裡、也不用重新部署。
+   ★ 若沒有 settings 分頁，就用下面這個預設值。
+   規則：抽到「大會通病」的事件，要放在 events 分頁、charId 填 common。 */
+const COMMON_CHANCE_DEFAULT = 0.33;
+
+/* 【姓名翻譯表】key = 中文字，value = 對應英文。要更好笑就多加字。 */
+const NAME_DICT = {
+  "王":"King","李":"Plum","張":"Stretch","陳":"Old","林":"Forest","黃":"Yellow",
+  "吳":"Oh","劉":"Flow","蔡":"Vegetable","楊":"Sheep","許":"Allow","鄭":"Serious",
+  "謝":"Thanks","郭":"Pot","洪":"Flood","邱":"Hill","曾":"Once","賴":"Blame",
+  "徐":"Slow","周":"Circle","葉":"Leaf","蘇":"Revive","江":"River","何":"What",
+  "余":"Me","高":"Tall","馬":"Horse","朱":"Pig","胡":"Random","石":"Stone",
+  "白":"White","田":"Field","方":"Square","金":"Gold","錢":"Money","孫":"Grandson",
+  "夏":"Summer","秋":"Autumn","冬":"Winter","春":"Spring","龍":"Dragon","呂":"Spine",
+  "得":"Get","權":"Power","明":"Bright","華":"Splendid","志":"Ambition","偉":"Great",
+  "強":"Strong","勇":"Brave","家":"Home","豪":"Rich","傑":"Hero","俊":"Handsome",
+  "宏":"Grand","文":"Text","武":"Martial","虎":"Tiger","飛":"Fly","天":"Sky",
+  "地":"Earth","山":"Mountain","海":"Sea","河":"River","雲":"Cloud","風":"Wind",
+  "雨":"Rain","雷":"Thunder","電":"Electric","光":"Light","亮":"Bright","星":"Star",
+  "月":"Moon","日":"Sun","火":"Fire","水":"Water","木":"Wood","森":"Forest",
+  "銀":"Silver","玉":"Jade","珍":"Precious","寶":"Treasure","財":"Wealth","富":"Rich",
+  "貴":"Noble","榮":"Glory","耀":"Shine","德":"Virtue","仁":"Kind","義":"Justice",
+  "禮":"Manner","智":"Wisdom","信":"Trust","忠":"Loyal","誠":"Sincere","真":"True",
+  "善":"Good","美":"Beauty","麗":"Pretty","婷":"Grace","雅":"Elegant","芳":"Fragrant",
+  "香":"Perfume","花":"Flower","蘭":"Orchid","梅":"Plum","竹":"Bamboo","玲":"Jingle",
+  "君":"Monarch","安":"Peace","平":"Flat","和":"Harmony","康":"Health","健":"Fit",
+  "福":"Fortune","喜":"Joy","樂":"Happy","欣":"Cheer","怡":"Pleasant","純":"Pure",
+  "宇":"Universe","軒":"Pavilion","博":"Broad","翔":"Soar","浩":"Vast","恩":"Grace",
+  "梓":"Catalpa","涵":"Contain","彥":"Talent","柏":"Cypress","子":"Kid","于":"At"
+};
+/* 查不到的字，用這組詞輪替（保證整個名字都翻成英文，同一個字結果固定）。 */
+const FALLBACK_WORDS = ["Turbo","Mega","Extra","Super","Ultra","Boom","Max","Neo","Zero","Prime"];
+
+/* 【內建備援內容：角色與事件】
+   ★ 正式內容改在 Google Sheet 維護；這裡是「Sheet 讀不到時」的備援，
+     建議讓它大致等於 Sheet 內容即可（不需每次同步）。
+   - weight：抽到這個角色的機率權重（數字越大越常出現）
+   - events：這個角色的事件池，每玩一次隨機抽一則
+       title=標題, text=情境內文, ending=結局名稱, fb=原文FB連結（留空字串 "" 代表尚未連結）
+   要新增一個結局：在對應角色的 events:[ ... ] 裡複製貼上一組 { ... } 即可。 */
+const CHARACTERS = [
+  {
+    id:"track", zh:"田徑選手", icon:"🏃", tag:"TRACK & FIELD", weight:30,
+    desc:"跑道上的孤獨靈魂，最懂什麼叫做動線混亂。",
+    events:[
+      { id:"track-01", title:"起跑槍響前的三十分鐘", ending:"找不到起點",
+        text:"你依照簡章抵達會場，卻發現指標把你指向停車場。繞了兩圈後，志工熱情地告訴你：『選手請走另一個門喔！』那個門，在操場的另一端。你用今天最快的速度衝去檢錄，剛好聽見廣播念出你的名字——的英文翻譯，全場笑成一片。",
+        fb:"https://www.facebook.com/" },
+      { id:"track-02", title:"你的號碼布會呼吸", ending:"別針之亂",
+        text:"領到號碼布很興奮，但別針只給了兩支。你把號碼布別在胸前，跑到一半它像旗子一樣在風中飄揚，還發出啪搭啪搭的聲音。終點線前你不確定自己是在衝刺，還是在放風箏。",
+        fb:"" }
+    ]
+  },
+  {
+    id:"basketball", zh:"籃球選手", icon:"🏀", tag:"BASKETBALL", weight:24,
+    desc:"團隊運動的代表，也是等待場地的專業戶。",
+    events:[
+      { id:"bball-01", title:"我們的比賽時間是幾點？", ending:"賽程玄學",
+        text:"賽程表更新了七次，每一次你的比賽時間都不一樣。最新版本顯示你們在早上八點，但抵達後場館還鎖著。全隊在門口罰站，隊長打開群組公告，第八版賽程剛剛發布：改下午三點。",
+        fb:"https://www.facebook.com/" },
+      { id:"bball-02", title:"這顆球是誰的？", ending:"熱身球消失事件",
+        text:"熱身時間只有五分鐘，而且全場只有一顆熱身球。你們十個人圍著它，像在玩一個沒有人想輸的搶球遊戲。裁判吹哨的那一刻，那顆球正好滾進了場邊的水溝。",
+        fb:"" }
+    ]
+  },
+  {
+    id:"volleyball", zh:"排球選手", icon:"🏐", tag:"VOLLEYBALL", weight:20,
+    desc:"網子兩邊的優雅，全靠場地配合演出。",
+    events:[
+      { id:"vball-01", title:"網子的高度是一種心情", ending:"隨興的球網",
+        text:"開賽前你抬頭看網，總覺得哪裡怪怪的。量了才發現，這張網的高度比正式規格低了一顆頭。工作人員笑著說：『大家都一樣低，很公平啦！』於是這場比賽變成了大型灌籃表演。",
+        fb:"https://www.facebook.com/" },
+      { id:"vball-02", title:"更衣室在哪裡", ending:"廁所即戰場",
+        text:"你提著球衣找更衣室，繞遍整個場館只找到一間掛著『暫停使用』的房間。最後你在無障礙廁所裡換好裝，出來時發現對手也剛從隔壁走出來，兩人相視無言，默默走向球場。",
+        fb:"" }
+    ]
+  },
+  {
+    id:"swim", zh:"游泳選手", icon:"🏊", tag:"SWIMMING", weight:16,
+    desc:"水裡的浪漫，岸上的災難。",
+    events:[
+      { id:"swim-01", title:"水溫是一場驚喜", ending:"冰河時期",
+        text:"你站上出發台，深吸一口氣跳下水——然後瞬間清醒。這水溫大概比你家冰箱的冷藏室高一點點。你以史上最快的速度游完全程，不是為了名次，是為了活著上岸。",
+        fb:"https://www.facebook.com/" },
+      { id:"swim-02", title:"泳道線在跳舞", ending:"漂移的水道",
+        text:"比賽進行到一半，你發現隔壁的水道線鬆脫了，慢慢往你這邊漂過來。你一邊自由式一邊閃避障礙物，游出了一條前所未見的S型路線。裁判在岸上看得目瞪口呆。",
+        fb:"" }
+    ]
+  },
+  {
+    id:"badminton", zh:"羽球選手", icon:"🏸", tag:"BADMINTON", weight:10,
+    desc:"室內運動的貴族，最怕會場的自然風。",
+    events:[
+      { id:"bad-01", title:"室內也有風", ending:"氣流大師",
+        text:"場館的大門為了通風全部敞開，於是你的高遠球被一陣穿堂風硬生生吹回自己這邊。這場比賽你打的不是對手，是空氣力學。最後你靠著預判風向拿下勝利，賽後受訪只想感謝氣象局。",
+        fb:"" }
+    ]
+  }
+];
+</script>
+
+<!-- ============================================================
+     ↓↓↓ 以下為遊戲程式邏輯，一般維護不需要修改 ↓↓↓
+     ============================================================ -->
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const SEEN_KEY = "wmg_sim_seen_v1";
+
+  /* ---- 本地收集紀錄 ---- */
+  function loadSeen(){ try{ return new Set(JSON.parse(localStorage.getItem(SEEN_KEY)||"[]")); }catch(e){ return new Set(); } }
+  function saveSeen(set){ try{ localStorage.setItem(SEEN_KEY, JSON.stringify([...set])); }catch(e){} }
+  let seen = loadSeen();
+
+  /* ---- 資料（可被 Google Sheet 覆蓋，讀不到就用內建備援）---- */
+  let DATA = CHARACTERS;
+  let COMMON_CHANCE = COMMON_CHANCE_DEFAULT;   // 可被 Sheet 的 settings 分頁覆蓋
+  let allEvents = [], TOTAL = 0;
+  function rebuild(){
+    allEvents = DATA.flatMap(c => c.events.map(e => ({...e, charId:c.id, charZh:c.zh, icon:c.icon, tag:c.tag})));
+    TOTAL = allEvents.length;
+    updateProgress();
+    if(!$("s-dex").classList.contains("active")) return;
+    renderDex();
+  }
+
+  /* ---- 從 Google Sheet 讀資料（含快取與備援）---- */
+  const CACHE_KEY = "wmg_sim_data_v1";
+  const CACHE_MS = 3 * 60 * 1000; // 快取 3 分鐘，減少請求也讓載入更快
+  function csvUrl(tab){
+    return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`;
+  }
+  function parseCSV(text){
+    const rows=[]; let row=[], field="", q=false;
+    for(let i=0;i<text.length;i++){
+      const c=text[i];
+      if(q){
+        if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false; }
+        else field+=c;
+      } else {
+        if(c==='"') q=true;
+        else if(c===','){ row.push(field); field=""; }
+        else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+        else if(c!=='\r') field+=c;
+      }
+    }
+    row.push(field); rows.push(row);
+    return rows;
+  }
+  function toObjects(text){
+    const rows=parseCSV(text).filter(r=>r.some(c=>c.trim()!==""));
+    if(rows.length<2) return [];
+    const H=rows[0].map(h=>h.trim());
+    return rows.slice(1).map(r=>{ const o={}; H.forEach((h,i)=>o[h]=(r[i]||"").trim()); return o; });
+  }
+  function buildFromSheet(charRows, evRows){
+    let chars;
+    if(charRows.length){
+      chars = charRows.map(r=>({
+        id:r.id, zh:r.zh, icon:r.icon||"🎯", tag:r.tag||"", weight:(r.weight===""||r.weight==null||isNaN(Number(r.weight)))?10:Number(r.weight), desc:r.desc||"", allowCommon:String(r.iscommon??r.isCommon??"").trim()!=="0", events:[]
+      })).filter(c=>c.id && c.zh);
+    } else {
+      chars = CHARACTERS.map(c=>({...c, events:[]})); // 沒填 characters 分頁就沿用內建角色定義
+    }
+    const byId={}; chars.forEach(c=>byId[c.id]=c);
+    evRows.forEach(r=>{
+      const c=byId[r.charId];
+      if(c && r.id){
+        const fbs=[r.fb, r.fb2, r.fb3]
+          .flatMap(v=>String(v||"").split(/[\s,]+/))
+          .map(s=>s.trim()).filter(s=>/^https?:\/\//.test(s)).slice(0,3);
+        c.events.push({ id:r.id, title:r.title, ending:r.ending, text:r.text, fb:fbs[0]||"", fbs:fbs,
+          isFinal: /^(1|true|yes)$/i.test(String(r.isFinal??r.isfinal??"").trim()) });
+      }
+    });
+    return chars.filter(c=>c.events.length);
+  }
+  async function fetchTab(tab){
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),8000);
+    try{ const res=await fetch(csvUrl(tab),{signal:ctrl.signal}); return await res.text(); }
+    finally{ clearTimeout(t); }
+  }
+  async function loadData(){
+    // 先讀 settings 分頁（可選）：找 common_chance，覆蓋通病機率
+    try{
+      const sRows = toObjects(await fetchTab(SHEET_TABS.settings));
+      for(const r of sRows){
+        const key = String(r.key || r.Key || "").trim().toLowerCase();
+        if(key === "common_chance"){
+          const v = parseFloat(r.value ?? r.Value);
+          if(!isNaN(v) && v >= 0 && v <= 1) COMMON_CHANCE = v;
+        }
+      }
+    }catch(e){ /* 沒有 settings 分頁就用預設值 */ }
+    try{
+      const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+      if(cached && Array.isArray(cached.data) && cached.data.length){
+        DATA=cached.data; rebuild();
+        if(Date.now()-cached.t < CACHE_MS) return; // 快取夠新，先不打擾 Google
+      }
+    }catch(e){}
+    try{
+      const [cText,eText]=await Promise.all([fetchTab(SHEET_TABS.characters), fetchTab(SHEET_TABS.events)]);
+      const built=buildFromSheet(toObjects(cText), toObjects(eText));
+      if(built.length){
+        DATA=built; rebuild();
+        try{ localStorage.setItem(CACHE_KEY, JSON.stringify({t:Date.now(), data:built})); }catch(e){}
+      }
+    }catch(e){ /* 讀取失敗：維持目前 DATA（快取或內建備援），遊戲照常運作 */ }
+  }
+
+  /* ---- 主題切換 ---- */
+  $("themeBtn").addEventListener("click", ()=>{
+    const cur = document.documentElement.getAttribute("data-theme");
+    const dark = cur ? cur==="dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+
+  /* ---- 畫面切換 ---- */
+  function show(id){
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    $(id).classList.add("active");
+    window.scrollTo({top:0, behavior:"instant" in window ? "instant" : "auto"});
+  }
+
+  /* ---- 姓名翻譯 ---- */
+  function fallbackWord(ch){
+    const code = [...ch].reduce((a,c)=>a+c.codePointAt(0),0);
+    return FALLBACK_WORDS[code % FALLBACK_WORDS.length];
+  }
+  function translate(name){
+    const chars = [...name.trim()].filter(c=>c.trim() && !/[a-zA-Z0-9]/.test(c));
+    if(!chars.length) return name.trim().toUpperCase() || "NO NAME";
+    return chars.map(c => NAME_DICT[c] || fallbackWord(c)).join(" ");
+  }
+  // 由姓名產生穩定的號碼與組別（同名結果固定）
+  function seedFrom(name){ return [...name].reduce((a,c)=>a+c.codePointAt(0),0); }
+
+  /* ---- 狀態 ---- */
+  let player = { zh:"", en:"" };
+  let round = 0;
+
+  function updateProgress(){
+    $("progress").hidden = false;
+    $("roundWrap").hidden = round < 1;
+    $("roundNum").textContent = round;
+    $("dexMini").textContent = `已收集 ${seen.size} / ${TOTAL} 種結局`;
+  }
+
+  /* ---- 1) 產生選手證 ---- */
+  function generateCard(){
+    const zh = $("nameInput").value.trim();
+    if(!zh){ $("nameInput").focus(); return; }
+    player.zh = zh;
+    player.en = translate(zh);
+    const seed = seedFrom(zh);
+    $("credEn").textContent = player.en;
+    $("credZh").textContent = zh;
+    $("credBib").textContent = String(1000 + (seed % 8999));
+    const groups = ["M35","M45","W40","W50","M60","W35","M50"];
+    $("credAge").textContent = groups[seed % groups.length];
+    show("s-card");
+  }
+  $("nameInput").addEventListener("keydown", e=>{ if(e.key==="Enter") generateCard(); });
+  $("genBtn").addEventListener("click", generateCard);
+  $("renameBtn").addEventListener("click", ()=>show("s-start"));
+
+  /* ---- 2) 加權抽三個角色 ---- */
+  function pickThree(){
+    const pool = DATA.filter(c=>c.id!=="common").map(c=>({...c}));
+    const out = [];
+    const n = Math.min(3, pool.length);
+    for(let i=0;i<n;i++){
+      const total = pool.reduce((s,c)=>s+c.weight,0);
+      let r = Math.random()*total, idx=0;
+      for(let j=0;j<pool.length;j++){ r-=pool[j].weight; if(r<=0){ idx=j; break; } }
+      out.push(pool[idx]); pool.splice(idx,1);
+    }
+    return out;
+  }
+  function renderPick(){
+    round++;
+    updateProgress();
+    const grid = $("pickGrid");
+    grid.innerHTML = "";
+    pickThree().forEach(c=>{
+      const b = document.createElement("button");
+      b.className = "pick";
+      b.innerHTML = `<span class="ic">${c.icon}</span>
+        <span><span class="nm">${c.zh}</span><br><span class="ds">${c.desc}</span></span>
+        <span class="go">›</span>`;
+      b.addEventListener("click", ()=>runEvent(c));
+      grid.appendChild(b);
+    });
+    show("s-pick");
+  }
+  $("toPickBtn").addEventListener("click", renderPick);
+  $("againBtn").addEventListener("click", renderPick);
+
+  /* ---- 3) 抽事件、顯示結局 ---- */
+  // 從某角色事件池挑一則，處理「最終結局」解鎖（一般結局全收集才會納入）
+  function pickFromPool(char){
+    const normals = char.events.filter(e=>!e.isFinal);
+    const finals  = char.events.filter(e=>e.isFinal);
+    const allNormalsSeen = normals.every(e=>seen.has(e.id));
+    if(allNormalsSeen){
+      const unseenFinal = finals.find(f=>!seen.has(f.id));
+      if(unseenFinal) return unseenFinal;              // 解鎖後未看過的最終結局優先給
+    }
+    let pool = allNormalsSeen ? normals.concat(finals) : normals;
+    if(!pool.length) pool = char.events;               // 保險
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+  let toastTimer;
+  function runEvent(character){
+    let src = character, isCommon = false, ev;
+    const charNormals = character.events.filter(e=>!e.isFinal);
+    const charFinals  = character.events.filter(e=>e.isFinal);
+    // 該角色一般結局全收集、且還有沒看過的最終結局 → 保證領取（跳過通病骰）
+    if(charNormals.every(e=>seen.has(e.id)) && charFinals.some(f=>!seen.has(f.id))){
+      ev = charFinals.find(f=>!seen.has(f.id));
+    } else {
+      const commonPool = DATA.find(c=>c.id==="common");
+      if(character.allowCommon!==false && commonPool && commonPool.events.length && character.id!=="common" && Math.random() < COMMON_CHANCE){
+        src = commonPool; isCommon = true;
+      }
+      ev = pickFromPool(src);
+    }
+    const isFinal = !!ev.isFinal;
+    $("resIc").textContent = isFinal ? "✨" : (isCommon ? (src.icon || "🌐") : character.icon);
+    $("resRole").textContent = isFinal ? "✨ 最終結局" : (isCommon ? "🌐 大會通病" : character.tag);
+    $("resTitle").textContent = ev.title;
+    $("resText").textContent = ev.text;
+    $("resEnding").textContent = ev.ending;
+
+    const links = (ev.fbs && ev.fbs.length ? ev.fbs : (ev.fb ? [ev.fb] : [])).slice(0,3);
+    const box = $("fbLinks"); box.innerHTML = "";
+    $("fbNote").hidden = links.length > 0;
+    links.forEach((u,i)=>{
+      const a = document.createElement("a");
+      a.className = "btn fb-btn"; a.target = "_blank"; a.rel = "noopener"; a.href = u;
+      a.textContent = links.length===1 ? "📘 看這篇靠北原文" : `📘 看原文 ${i+1}`;
+      box.appendChild(a);
+    });
+
+    const isNew = !seen.has(ev.id);
+    if(isNew){
+      seen.add(ev.id); saveSeen(seen);
+      clearTimeout(toastTimer);
+      const t = $("toast"); t.classList.add("show");
+      toastTimer = setTimeout(()=>t.classList.remove("show"), 2600);
+    }
+    updateProgress();
+    show("s-result");
+  }
+
+  /* ---- 4) 圖鑑 ---- */
+  function renderDex(){
+    $("dexHave").textContent = seen.size;
+    $("dexTotal").textContent = "/" + TOTAL;
+    $("dexBar").style.width = (TOTAL ? Math.round(seen.size/TOTAL*100) : 0) + "%";
+    const list = $("dexList");
+    list.innerHTML = "";
+    const order = [...DATA.filter(c=>c.id!=="common"), ...DATA.filter(c=>c.id==="common")];
+    order.forEach(c=>{
+      const g = document.createElement("div");
+      g.className = "dex-group";
+      const got = c.events.filter(e=>seen.has(e.id)).length;
+      g.innerHTML = `<h3>${c.icon} ${c.zh} <span style="color:var(--track)">${got}/${c.events.length}</span></h3>`;
+      c.events.forEach(e=>{
+        const has = seen.has(e.id);
+        const row = document.createElement("div");
+        row.className = "dex-item" + (has ? "" : " locked");
+        if(has){
+          row.innerHTML = `<span class="st">${e.isFinal?"✨":"🏁"}</span><span class="tx">${e.isFinal?"最終結局 · ":""}${e.ending}</span>` +
+            (e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
+        } else if(e.isFinal){
+          row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
+        } else {
+          row.innerHTML = `<span class="st">🔒</span><span class="tx">？？？</span>`;
+        }
+        g.appendChild(row);
+      });
+      list.appendChild(g);
+    });
+    show("s-dex");
+  }
+  $("dexBtn").addEventListener("click", renderDex);
+  $("dexBtn0").addEventListener("click", renderDex);
+  $("backBtn").addEventListener("click", ()=> player.zh ? show("s-result") : show("s-start"));
+  $("resetBtn").addEventListener("click", ()=>{
+    if(confirm("確定要清除所有收集紀錄嗎？")){ seen = new Set(); saveSeen(seen); renderDex(); updateProgress(); }
+  });
+
+  rebuild();      // 先用內建備援把畫面準備好
+  loadData();     // 背景讀取 Google Sheet，成功就自動覆蓋
+})();
+</script>
+</body>
+</html>
