@@ -202,12 +202,20 @@ h1.title .zh{font-family:"Noto Sans TC";display:block;font-weight:900;font-size:
 .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--track),var(--gold));border-radius:999px;transition:width .5s}
 .dex-group{margin-top:18px}
 .dex-group h3{font-size:14px;font-family:"Oswald";letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:8px}
-.dex-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--surface)}
+.dex-item{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--surface)}
 .dex-item.locked{opacity:.6;background:var(--surface-2)}
+.dex-item.expandable{cursor:pointer}
+.dex-item.expandable:hover{border-color:var(--track)}
 .dex-item .st{font-size:20px}
-.dex-item .tx{font-weight:700;font-size:15px}
+.dex-item .tx{font-weight:700;font-size:15px;flex:1;min-width:0}
 .dex-item.locked .tx{color:var(--muted);font-weight:600}
-.dex-item a{margin-left:auto;color:#1877F2;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
+.dex-item .caret{margin-left:auto;color:var(--muted);font-size:14px;transition:transform .2s;flex:none}
+.dex-item.open .caret{transform:rotate(180deg)}
+.dex-detail{flex-basis:100%;width:100%;margin-top:10px;padding-top:12px;border-top:1px dashed var(--line)}
+.dex-detail[hidden]{display:none}
+.dex-text{margin:0 0 10px;font-size:14px;font-weight:400;color:var(--text);white-space:pre-wrap;line-height:1.75}
+.dex-links{display:flex;flex-wrap:wrap;gap:8px}
+.dex-links a{color:#1877F2;font-weight:700;font-size:13px;text-decoration:none}
 
 .footer{margin-top:auto;padding-top:26px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
 .footer a{color:var(--muted)}
@@ -718,21 +726,27 @@ const CHARACTERS = [
         if(secret){
           // 特殊隱藏類別：一律鎖頭 + ？？？，完全保密（不透露是否已收集）
           row.innerHTML = `<span class="st">🔒</span><span class="tx">？？？</span>`;
-        } else if(e.isFinal){
-          if(has){
-            row.innerHTML = `<span class="st">✨</span>` +
-              `<span class="tx">${esc(e.title)}<span ${subStyle}>✨ 最終結局 · ${esc(e.ending)}</span></span>` +
-              (e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
-          } else {
-            // 最終結局解鎖前：不顯示名稱，只給提示
-            row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
-          }
+        } else if(!has){
+          // 未解鎖：一般事件顯示標題（製造期待）；最終結局只給提示不爆名稱
+          if(e.isFinal) row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
+          else row.innerHTML = `<span class="st">🔒</span><span class="tx">${esc(e.title)}</span>`;
         } else {
-          // 一般事件：標題永遠顯示（未解鎖也看得到，製造期待）；結局名與原文連結解鎖後才出現
-          const sub = has ? `<span ${subStyle}>結局 · ${esc(e.ending)}</span>` : ``;
-          row.innerHTML = `<span class="st">${has?"🏁":"🔒"}</span>` +
-            `<span class="tx">${esc(e.title)}${sub}</span>` +
-            (has && e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
+          // 已解鎖：點一下展開，回味完整文案＋原文連結
+          row.className += " expandable";
+          const sub = (e.isFinal ? "✨ 最終結局 · " : "結局 · ") + esc(e.ending);
+          const links = (e.fbs && e.fbs.length ? e.fbs : (e.fb ? [e.fb] : [])).slice(0,3);
+          const linkHtml = links.map((u,i)=>`<a href="${u}" target="_blank" rel="noopener">📘 ${links.length===1?"看原文":"看原文 "+(i+1)}</a>`).join("");
+          row.innerHTML =
+            `<span class="st">${e.isFinal?"✨":"🏁"}</span>` +
+            `<span class="tx">${esc(e.title)}<span ${subStyle}>${sub}</span></span>` +
+            `<span class="caret">▾</span>` +
+            `<div class="dex-detail" hidden><div class="dex-text">${esc(e.text)}</div>${linkHtml?`<div class="dex-links">${linkHtml}</div>`:""}</div>`;
+          row.addEventListener("click", ev2=>{
+            if(ev2.target.closest("a")) return;          // 點原文連結不收合
+            const d = row.querySelector(".dex-detail");
+            d.hidden = !d.hidden;
+            row.classList.toggle("open", !d.hidden);
+          });
         }
         g.appendChild(row);
       });
