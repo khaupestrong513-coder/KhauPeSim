@@ -698,18 +698,27 @@ const CHARACTERS = [
     $("dexBar").style.width = (TOTAL ? Math.round(seen.size/TOTAL*100) : 0) + "%";
     const list = $("dexList");
     list.innerHTML = "";
+    const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const HIDDEN_DEX = new Set(["baby","strong","fans"]); // 這些類別的事件不揭露，一律以 ？？？ 顯示
     const order = [...DATA.filter(c=>c.id!=="common"), ...DATA.filter(c=>c.id==="common")];
     order.forEach(c=>{
       const g = document.createElement("div");
       g.className = "dex-group";
       const got = c.events.filter(e=>seen.has(e.id)).length;
-      g.innerHTML = `<h3>${c.icon} ${c.zh} <span style="color:var(--track)">${got}/${c.events.length}</span></h3>`;
-      c.events.forEach(e=>{
+      g.innerHTML = `<h3>${c.icon} ${esc(c.zh)} <span style="color:var(--track)">${got}/${c.events.length}</span></h3>`;
+      const secret = HIDDEN_DEX.has(c.id);
+      const evs = [...c.events].sort((a,b)=>(a.isFinal?1:0)-(b.isFinal?1:0)); // 最終結局排到最後
+      evs.forEach(e=>{
         const has = seen.has(e.id);
         const row = document.createElement("div");
         row.className = "dex-item" + (has ? "" : " locked");
-        if(has){
-          row.innerHTML = `<span class="st">${e.isFinal?"✨":"🏁"}</span><span class="tx">${e.isFinal?"最終結局 · ":""}${e.ending}</span>` +
+        if(secret){
+          // 特殊隱藏類別：不論解鎖與否都用 ？？？（🏁=已收集、🔒=未收集）
+          row.innerHTML = `<span class="st">${has?"🏁":"🔒"}</span><span class="tx">？？？</span>`;
+        } else if(has){
+          const sub = (e.isFinal ? "✨ 最終結局 · " : "結局 · ") + esc(e.ending);
+          row.innerHTML = `<span class="st">${e.isFinal?"✨":"🏁"}</span>` +
+            `<span class="tx">${esc(e.title)}<span style="display:block;font-weight:500;font-size:12px;color:var(--muted);margin-top:2px">${sub}</span></span>` +
             (e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
         } else if(e.isFinal){
           row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
