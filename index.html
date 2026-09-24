@@ -714,10 +714,10 @@ const CHARACTERS = [
       evs.forEach(e=>{
         const has = seen.has(e.id);
         const row = document.createElement("div");
-        row.className = "dex-item" + (has ? "" : " locked");
+        row.className = "dex-item" + (has && !secret ? "" : " locked");
         if(secret){
-          // 特殊隱藏類別：不論解鎖與否都用 ？？？（🏁=已收集、🔒=未收集）
-          row.innerHTML = `<span class="st">${has?"🏁":"🔒"}</span><span class="tx">？？？</span>`;
+          // 特殊隱藏類別：一律鎖頭 + ？？？，完全保密（不透露是否已收集）
+          row.innerHTML = `<span class="st">🔒</span><span class="tx">？？？</span>`;
         } else if(e.isFinal){
           if(has){
             row.innerHTML = `<span class="st">✨</span>` +
