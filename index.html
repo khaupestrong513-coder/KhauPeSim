@@ -705,8 +705,10 @@ const CHARACTERS = [
       const g = document.createElement("div");
       g.className = "dex-group";
       const got = c.events.filter(e=>seen.has(e.id)).length;
-      g.innerHTML = `<h3>${c.icon} ${esc(c.zh)} <span style="color:var(--track)">${got}/${c.events.length}</span></h3>`;
       const secret = HIDDEN_DEX.has(c.id);
+      // 隱藏類別：圖鑑連類別名稱都遮成 ？？？（三選一仍顯示真名，不受影響）
+      const gName = secret ? "❓ ？？？" : `${c.icon} ${esc(c.zh)}`;
+      g.innerHTML = `<h3>${gName} <span style="color:var(--track)">${got}/${c.events.length}</span></h3>`;
       const evs = [...c.events].sort((a,b)=>(a.isFinal?1:0)-(b.isFinal?1:0)); // 最終結局排到最後
       const subStyle = 'style="display:block;font-weight:500;font-size:12px;color:var(--muted);margin-top:2px"';
       evs.forEach(e=>{
@@ -726,10 +728,10 @@ const CHARACTERS = [
             row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
           }
         } else {
-          // 一般事件：標題永遠顯示（製造期待）；結局名與原文連結解鎖後才出現
-          const sub = has ? `結局 · ${esc(e.ending)}` : `結局 ？？？`;
+          // 一般事件：標題永遠顯示（未解鎖也看得到，製造期待）；結局名與原文連結解鎖後才出現
+          const sub = has ? `<span ${subStyle}>結局 · ${esc(e.ending)}</span>` : ``;
           row.innerHTML = `<span class="st">${has?"🏁":"🔒"}</span>` +
-            `<span class="tx">${esc(e.title)}<span ${subStyle}>${sub}</span></span>` +
+            `<span class="tx">${esc(e.title)}${sub}</span>` +
             (has && e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
         }
         g.appendChild(row);
