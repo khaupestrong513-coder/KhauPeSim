@@ -206,7 +206,7 @@ h1.title .zh{font-family:"Noto Sans TC";display:block;font-weight:900;font-size:
 .dex-item.locked{opacity:.6;background:var(--surface-2)}
 .dex-item .st{font-size:20px}
 .dex-item .tx{font-weight:700;font-size:15px}
-.dex-item.locked .tx{color:var(--muted);font-weight:500;letter-spacing:.2em}
+.dex-item.locked .tx{color:var(--muted);font-weight:600}
 .dex-item a{margin-left:auto;color:#1877F2;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
 
 .footer{margin-top:auto;padding-top:26px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
@@ -708,6 +708,7 @@ const CHARACTERS = [
       g.innerHTML = `<h3>${c.icon} ${esc(c.zh)} <span style="color:var(--track)">${got}/${c.events.length}</span></h3>`;
       const secret = HIDDEN_DEX.has(c.id);
       const evs = [...c.events].sort((a,b)=>(a.isFinal?1:0)-(b.isFinal?1:0)); // 最終結局排到最後
+      const subStyle = 'style="display:block;font-weight:500;font-size:12px;color:var(--muted);margin-top:2px"';
       evs.forEach(e=>{
         const has = seen.has(e.id);
         const row = document.createElement("div");
@@ -715,15 +716,21 @@ const CHARACTERS = [
         if(secret){
           // 特殊隱藏類別：不論解鎖與否都用 ？？？（🏁=已收集、🔒=未收集）
           row.innerHTML = `<span class="st">${has?"🏁":"🔒"}</span><span class="tx">？？？</span>`;
-        } else if(has){
-          const sub = (e.isFinal ? "✨ 最終結局 · " : "結局 · ") + esc(e.ending);
-          row.innerHTML = `<span class="st">${e.isFinal?"✨":"🏁"}</span>` +
-            `<span class="tx">${esc(e.title)}<span style="display:block;font-weight:500;font-size:12px;color:var(--muted);margin-top:2px">${sub}</span></span>` +
-            (e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
         } else if(e.isFinal){
-          row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
+          if(has){
+            row.innerHTML = `<span class="st">✨</span>` +
+              `<span class="tx">${esc(e.title)}<span ${subStyle}>✨ 最終結局 · ${esc(e.ending)}</span></span>` +
+              (e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
+          } else {
+            // 最終結局解鎖前：不顯示名稱，只給提示
+            row.innerHTML = `<span class="st">✨</span><span class="tx" style="color:var(--gold)">最終結局（收集完全部解鎖）</span>`;
+          }
         } else {
-          row.innerHTML = `<span class="st">🔒</span><span class="tx">？？？</span>`;
+          // 一般事件：標題永遠顯示（製造期待）；結局名與原文連結解鎖後才出現
+          const sub = has ? `結局 · ${esc(e.ending)}` : `結局 ？？？`;
+          row.innerHTML = `<span class="st">${has?"🏁":"🔒"}</span>` +
+            `<span class="tx">${esc(e.title)}<span ${subStyle}>${sub}</span></span>` +
+            (has && e.fb ? `<a href="${e.fb}" target="_blank" rel="noopener">原文 ↗</a>` : "");
         }
         g.appendChild(row);
       });
