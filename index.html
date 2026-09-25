@@ -673,7 +673,7 @@ const CHARACTERS = [
     }
     const isFinal = !!ev.isFinal;
     $("resIc").textContent = isFinal ? "✨" : (isCommon ? (src.icon || "🌐") : character.icon);
-    $("resRole").textContent = isFinal ? "✨ 最終結局" : (isCommon ? "🌐 大會通病" : character.tag);
+    $("resRole").textContent = isFinal ? "✨ 最終結局" : (isCommon ? src.zh : character.tag);
     $("resTitle").textContent = ev.title;
     $("resText").textContent = ev.text;
     $("resEnding").textContent = ev.ending;
