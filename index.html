@@ -453,6 +453,9 @@ const CHARACTERS = [
 ];
 </script>
 
+<!-- 中文字 → 威妥瑪拼音 備援表（自動產生，勿手動編輯）；詞庫查不到的字會用它翻 -->
+<script src="names_wg.js"></script>
+
 <!-- ============================================================
      ↓↓↓ 以下為遊戲程式邏輯，一般維護不需要修改 ↓↓↓
      ============================================================ -->
@@ -597,7 +600,9 @@ const CHARACTERS = [
   }
   function pickTrans(ch){
     const opts = NAMES[ch];
-    return (opts && opts.length) ? opts[Math.floor(Math.random()*opts.length)] : fallbackWord(ch);
+    if(opts && opts.length) return opts[Math.floor(Math.random()*opts.length)];
+    if(window.WG_MAP && WG_MAP[ch]) return WG_MAP[ch];   // 詞庫沒有 → 用威妥瑪拼音
+    return fallbackWord(ch);
   }
   function translate(name){
     const chars = [...name.trim()].filter(c=>c.trim() && !/[a-zA-Z0-9]/.test(c));
