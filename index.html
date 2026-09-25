@@ -347,7 +347,7 @@ h1.title .zh{font-family:"Noto Sans TC";display:block;font-weight:900;font-size:
    分享設定維持「知道連結的任何人 = 檢視者」即可，網站會自動讀取；
    讀不到時會自動改用下方「內建備援內容」，遊戲永遠不會白畫面。 */
 const SHEET_ID = "1SSFr6tWlImG0gMTVOVAu9zlYl0DqMuPrleoCjEN42Uk";
-const SHEET_TABS = { characters:"characters", events:"events", settings:"settings" };
+const SHEET_TABS = { characters:"characters", events:"events", settings:"settings", names:"names" };
 
 /* 【大會通病出現機率】0 ~ 1（例如 0.33 ≈ 每 3 次約有 1 次抽到「大會通病」）。
    ★ 最好改的方式：在 Google Sheet 開一個叫「settings」的分頁，
@@ -547,6 +547,16 @@ const CHARACTERS = [
         }
       }
     }catch(e){ /* 沒有 settings 分頁就用預設值 */ }
+    // 讀 names 分頁（可選）：擴充姓名翻譯表；一個字可有多種譯法（蝦翻／威妥瑪…），翻譯時隨機挑
+    try{
+      const nRows = toObjects(await fetchTab(SHEET_TABS.names));
+      nRows.forEach(r=>{
+        const zh = String(r.zh || "").trim();
+        const opts = [r["蝦翻"], r["威妥瑪拼音"], r.en, r.en2, r.en3]
+          .map(v=>String(v||"").trim()).filter(Boolean);
+        if(zh && opts.length) NAMES[zh] = opts;   // 覆蓋/擴充該字的譯法
+      });
+    }catch(e){ /* 沒有 names 分頁就用內建表 */ }
     try{
       const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
       if(cached && Array.isArray(cached.data) && cached.data.length){
@@ -578,15 +588,21 @@ const CHARACTERS = [
     window.scrollTo({top:0, behavior:"instant" in window ? "instant" : "auto"});
   }
 
-  /* ---- 姓名翻譯 ---- */
+  /* ---- 姓名翻譯（可被 Sheet 的 names 分頁擴充；每字有多個譯法時隨機挑一個）---- */
+  const NAMES = {};
+  Object.keys(NAME_DICT).forEach(k => { NAMES[k] = [NAME_DICT[k]]; }); // 內建表當底
   function fallbackWord(ch){
     const code = [...ch].reduce((a,c)=>a+c.codePointAt(0),0);
     return FALLBACK_WORDS[code % FALLBACK_WORDS.length];
   }
+  function pickTrans(ch){
+    const opts = NAMES[ch];
+    return (opts && opts.length) ? opts[Math.floor(Math.random()*opts.length)] : fallbackWord(ch);
+  }
   function translate(name){
     const chars = [...name.trim()].filter(c=>c.trim() && !/[a-zA-Z0-9]/.test(c));
     if(!chars.length) return name.trim().toUpperCase() || "NO NAME";
-    return chars.map(c => NAME_DICT[c] || fallbackWord(c)).join(" ");
+    return chars.map(c => pickTrans(c)).join(" ");
   }
   // 由姓名產生穩定的號碼與組別（同名結果固定）
   function seedFrom(name){ return [...name].reduce((a,c)=>a+c.codePointAt(0),0); }
