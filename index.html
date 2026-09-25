@@ -160,6 +160,11 @@ h1.title .zh{font-family:"Noto Sans TC";display:block;font-weight:900;font-size:
 .cred-strip{height:10px;background:repeating-linear-gradient(90deg,var(--track) 0 26px,var(--gold) 26px 52px)}
 
 /* ===== 角色三選一 ===== */
+/* 三選一頁：選手識別小卡 */
+.player-chip{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:10px 16px;box-shadow:var(--shadow)}
+.player-chip .pc-label{width:100%;font-family:"Oswald",sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.player-chip .pc-en{font-family:"Oswald","Noto Sans TC",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(20px,6vw,26px);color:var(--track);line-height:1.05;word-break:break-word}
+.player-chip .pc-zh{font-weight:700;font-size:15px;color:var(--muted)}
 .pick-grid{display:flex;flex-direction:column;gap:12px}
 .pick{
   text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;
@@ -277,6 +282,11 @@ h1.title .zh{font-family:"Noto Sans TC";display:block;font-weight:900;font-size:
 
   <!-- 3) 角色三選一 -->
   <section class="screen" id="s-pick">
+    <div class="player-chip">
+      <span class="pc-label">選手 · Athlete</span>
+      <span class="pc-en" id="pickEn"></span>
+      <span class="pc-zh" id="pickZh"></span>
+    </div>
     <div>
       <p class="eyebrow">Choose Your Event · 三選一</p>
       <h1 class="title" style="font-size:clamp(28px,9vw,42px)">你想參加<br>哪個項目？</h1>
@@ -626,6 +636,8 @@ const CHARACTERS = [
   function renderPick(){
     round++;
     updateProgress();
+    $("pickEn").textContent = player.en;
+    $("pickZh").textContent = player.zh;
     const grid = $("pickGrid");
     grid.innerHTML = "";
     pickThree().forEach(c=>{
